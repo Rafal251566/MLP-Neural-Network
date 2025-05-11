@@ -144,7 +144,13 @@ namespace SiecNeuronowaMLP
                     double bladSredniokwadratowy = ObliczBladSredniokwadratowy(daneWejsciowe, oczekiwaneWyjscia);
                     wszystkieBledy.Add(bladSredniokwadratowy);
                     //Console.WriteLine($"Epoka: {epoka}, Błąd: {bladSredniokwadratowy}");
+
+                    if(bladSredniokwadratowy < 0.016)
+                    {
+                        return;
+                    }
                 }
+
             }
         }
 
@@ -349,13 +355,46 @@ namespace SiecNeuronowaMLP
                     }
                 }
 
-                int[] architektura = { 4, 8, 3 }; // 4 wejścia 12 neuronów ukrytych 3 wyjścia 
+                Random random = new Random();
+                List<int> indeksy = Enumerable.Range(0, daneWejscioweNauka.Count).ToList();
+                indeksy = indeksy.OrderBy(x => random.Next()).ToList();
+
+                List<List<double>> poszaflowaneDaneWejscioweNauka = new List<List<double>>();
+                List<List<double>> poszaflowaneOczekiwaneWyjsciaNauka = new List<List<double>>();
+
+                foreach (int indeks in indeksy)
+                {
+                    poszaflowaneDaneWejscioweNauka.Add(daneWejscioweNauka[indeks]);
+                    poszaflowaneOczekiwaneWyjsciaNauka.Add(oczekiwaneWyjsciaNauka[indeks]);
+                }
+
+                Random random2 = new Random();
+                List<int> indekxy = Enumerable.Range(0, daneWejscioweTest.Count).ToList();
+                indeksy = indekxy.OrderBy(x => random2.Next()).ToList();
+
+                List<List<double>> poszaflowaneDaneWejscioweTest = new List<List<double>>();
+                List<List<double>> poszaflowaneOczekiwaneWyjsciaTest = new List<List<double>>();
+
+                foreach (int indeks in indeksy)
+                {
+                    poszaflowaneDaneWejscioweTest.Add(daneWejscioweTest[indeks]);
+                    poszaflowaneOczekiwaneWyjsciaTest.Add(oczekiwaneWyjsciaTest[indeks]);
+                }
+
+                daneWejscioweNauka = poszaflowaneDaneWejscioweNauka;
+                oczekiwaneWyjsciaNauka = poszaflowaneOczekiwaneWyjsciaNauka;
+
+                daneWejscioweTest = poszaflowaneDaneWejscioweTest;
+                oczekiwaneWyjsciaTest = poszaflowaneOczekiwaneWyjsciaTest;
+
+                int[] architektura = { 4, 5, 3 }; // 4 wejścia 12 neuronów ukrytych 3 wyjścia 
                 bool useBias = true;
                 double learningRate = 0.7;
-                double momentum = 0.9;
+                double momentum = 0.6;
                 int liczbaEpok = 10001;
 
                 SiecNeuronowa siec = new SiecNeuronowa(architektura, useBias, learningRate, momentum);
+
 
                 siec.Trenuj(daneWejscioweNauka, oczekiwaneWyjsciaNauka, liczbaEpok);
 
@@ -414,6 +453,84 @@ namespace SiecNeuronowaMLP
             {
                 Console.WriteLine("Błąd formatowania danych w pliku.");
             }
+
+
+            List<List<double>> daneWejscioweAutoenkoder = new List<List<double>>()
+            {
+                new List<double> { 1, 0, 0, 0 },
+                new List<double> { 0, 1, 0, 0 },
+                new List<double> { 0, 0, 1, 0 },
+                new List<double> { 0, 0, 0, 1 }
+            };
+            List<List<double>> oczekiwaneWyjsciaAutoenkoder = new List<List<double>>()
+            {
+                new List<double> { 1, 0, 0, 0 },
+                new List<double> { 0, 1, 0, 0 },
+                new List<double> { 0, 0, 1, 0 },
+                new List<double> { 0, 0, 0, 1 }
+            };
+
+            int liczbaEpokAutoenkoder = 1000;
+            double learningRateAutoenkoder = 0.6;
+            double momentumAutoenkoder = 0.0;
+
+            Console.WriteLine("\n--- Trening Autoenkodera z Biasem ---");
+            int[] architekturaZBiasem = { 4, 2, 4 };
+            SiecNeuronowa siecZBiasem = new SiecNeuronowa(architekturaZBiasem, true, learningRateAutoenkoder, momentumAutoenkoder);
+            siecZBiasem.Trenuj(daneWejscioweAutoenkoder, oczekiwaneWyjsciaAutoenkoder, liczbaEpokAutoenkoder);
+
+            Console.WriteLine("\nWyjścia sieci z biasem po treningu:");
+            for (int i = 0; i < daneWejscioweAutoenkoder.Count; i++)
+            {
+                List<double> wyjscia = siecZBiasem.Propaguj(daneWejscioweAutoenkoder[i]);
+                Console.WriteLine($"Wejście: [{string.Join(", ", daneWejscioweAutoenkoder[i])}] -> Wyjście: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+            }
+
+            // Trening bez biasu w warstwach ukrytych i wyjściowej
+            Console.WriteLine("\n--- Trening Autoenkodera BEZ Biasu ---");
+            SiecNeuronowa siecBezBiasu = new SiecNeuronowa(architekturaZBiasem, false, learningRateAutoenkoder, momentumAutoenkoder);
+            siecBezBiasu.Trenuj(daneWejscioweAutoenkoder, oczekiwaneWyjsciaAutoenkoder, liczbaEpokAutoenkoder);
+
+            Console.WriteLine("\nWyjścia sieci bez biasu po treningu:");
+            for (int i = 0; i < daneWejscioweAutoenkoder.Count; i++)
+            {
+                List<double> wyjscia = siecBezBiasu.Propaguj(daneWejscioweAutoenkoder[i]);
+                Console.WriteLine($"Wejście: [{string.Join(", ", daneWejscioweAutoenkoder[i])}] -> Wyjście: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+            }
+
+            List<Tuple<double, double>> konfiguracje = new List<Tuple<double, double>>()
+            {
+                Tuple.Create(0.9, 0.0),
+                Tuple.Create(0.6, 0.0),
+                Tuple.Create(0.2, 0.0),
+                Tuple.Create(0.9, 0.6),
+                Tuple.Create(0.2, 0.9)
+            };
+
+            foreach (var konfiguracja in konfiguracje)
+            {
+                double learningRate = konfiguracja.Item1;
+                double momentum = konfiguracja.Item2;
+
+                Console.WriteLine($"\n--- Trening Autoenkodera z Biasem (LR={learningRate}, Momentum={momentum}) ---");
+                SiecNeuronowa siec = new SiecNeuronowa(architekturaZBiasem, true, learningRate, momentum);
+                siec.Trenuj(daneWejscioweAutoenkoder, oczekiwaneWyjsciaAutoenkoder, liczbaEpokAutoenkoder);
+
+                Console.WriteLine("\nWyjścia sieci po treningu:");
+                for (int i = 0; i < daneWejscioweAutoenkoder.Count; i++)
+                {
+                    List<double> wyjscia = siec.Propaguj(daneWejscioweAutoenkoder[i]);
+                    Console.WriteLine($"Wejście: [{string.Join(", ", daneWejscioweAutoenkoder[i])}] -> Wyjście: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+                }
+
+                // Opcjonalnie: Zapisywanie błędów dla każdej konfiguracji
+                string bledyFilePath = $"bledy_lr{learningRate}_momentum{momentum}.txt";
+                File.WriteAllLines(bledyFilePath, siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
+                Console.WriteLine($"Błędy zapisano do pliku: {bledyFilePath}");
+            }
+
+
+
         }
 
         static string zmienNaIndex(int indeks)
