@@ -345,7 +345,7 @@ namespace SiecNeuronowaMLP
                         if (i < 40)
                         {
                             daneWejscioweNauka.Add(daneGatunku[i]);
-                            oczekiwaneWyjsciaNauka.Add(kluczEtykiety.ToList()); 
+                            oczekiwaneWyjsciaNauka.Add(kluczEtykiety.ToList());
                         }
                         else
                         {
@@ -387,9 +387,9 @@ namespace SiecNeuronowaMLP
                 daneWejscioweTest = poszaflowaneDaneWejscioweTest;
                 oczekiwaneWyjsciaTest = poszaflowaneOczekiwaneWyjsciaTest;
 
-                int[] architektura = { 4, 5, 3 }; // 4 wejścia 12 neuronów ukrytych 3 wyjścia 
+                int[] architektura = { 4, 5, 3 }; // 4 wejścia 5 neuronów ukrytych 3 wyjścia
                 bool useBias = true;
-                double learningRate = 0.7;
+                double learningRate = 0.4;
                 double momentum = 0.6;
                 int liczbaEpok = 10001;
 
@@ -399,7 +399,9 @@ namespace SiecNeuronowaMLP
                 siec.Trenuj(daneWejscioweNauka, oczekiwaneWyjsciaNauka, liczbaEpok);
 
                 Console.WriteLine("\nWyniki testowania:");
-                int poprawneOdpowiedzi = 0;
+                List<int> przewidywaneEtykiety = new List<int>();
+                List<int> rzeczywisteEtykiety = new List<int>();
+
                 for (int i = 0; i < daneWejscioweTest.Count; i++)
                 {
                     List<double> wyjscia = siec.Propaguj(daneWejscioweTest[i]);
@@ -411,14 +413,62 @@ namespace SiecNeuronowaMLP
 
                     Console.WriteLine($"Wejście: [{string.Join(", ", daneWejscioweTest[i])}] -> Przewidywana: {przewidywanaKlasa}, Oczekiwana: {oczekiwanaKlasa}");
 
-                    if (przewidywanyIndeks == oczekiwanyIndeks)
-                    {
-                        poprawneOdpowiedzi++;
-                    }
+                    przewidywaneEtykiety.Add(przewidywanyIndeks);
+                    rzeczywisteEtykiety.Add(oczekiwanyIndeks);
                 }
 
-                double procentPoprawnych = (double)poprawneOdpowiedzi / daneWejscioweTest.Count * 100;
-                Console.WriteLine($"\nDokładność testu: {procentPoprawnych:F2}% ({poprawneOdpowiedzi}/{daneWejscioweTest.Count})");
+                
+                int poprawneOdpowiedzi = przewidywaneEtykiety.Zip(rzeczywisteEtykiety, (przewidywany, rzeczywisty) => przewidywany == rzeczywisty).Count(x => x);
+                Console.WriteLine($"\nLiczba poprawnie sklasyfikowanych obiektów: {poprawneOdpowiedzi}/{daneWejscioweTest.Count}");
+
+                
+                int liczbaKlas = etykietyKlucze.Count;
+                var confusionMatrix = new int[liczbaKlas, liczbaKlas];
+
+                for (int i = 0; i < przewidywaneEtykiety.Count; i++)
+                {
+                    int przewidywany = przewidywaneEtykiety[i];
+                    int rzeczywisty = rzeczywisteEtykiety[i];
+                    confusionMatrix[rzeczywisty, przewidywany]++;
+                }
+
+                Console.WriteLine("\nMacierz pomyłek:");
+                for (int i = 0; i < liczbaKlas; i++)
+                {
+                    for (int j = 0; j < liczbaKlas; j++)
+                    {
+                        Console.Write(confusionMatrix[i, j] + "\t");
+                    }
+                    Console.WriteLine();
+                }
+
+                for (int i = 0; i < liczbaKlas; i++)
+                {
+                    int truePositive = confusionMatrix[i, i];
+                    int falsePositive = 0;
+                    int falseNegative = 0;
+
+                    for (int j = 0; j < liczbaKlas; j++)
+                    {
+                        if (j != i)
+                        {
+                            falsePositive += confusionMatrix[j, i];
+                            falseNegative += confusionMatrix[i, j];
+                        }
+                    }
+
+                    double precision = (truePositive + falsePositive == 0) ? 0 : (double)truePositive / (truePositive + falsePositive);
+                    double recall = (truePositive + falseNegative == 0) ? 0 : (double)truePositive / (truePositive + falseNegative);
+                    double fMeasure = (precision + recall == 0) ? 0 : 2 * (precision * recall) / (precision + recall);
+
+                    Console.WriteLine($"\nKlasa {zmienNaIndex(i)}:");
+                    Console.WriteLine($"Precision: {precision:F2}");
+                    Console.WriteLine($"Recall: {recall:F2}");
+                    Console.WriteLine($"F-measure: {fMeasure:F2}");
+                }
+
+                double accuracy = (double)poprawneOdpowiedzi / daneWejscioweTest.Count;
+                Console.WriteLine($"\nDokładność testu: {accuracy:F2}");
 
                 string saveBledy = "wszystkieBledy.txt";
                 File.WriteAllLines(saveBledy, siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
@@ -438,8 +488,6 @@ namespace SiecNeuronowaMLP
                 {
                     Console.WriteLine("Nie znaleziono pliku View.exe! Sprawdź ścieżkę.");
                 }
-
-
             }
             catch (FileNotFoundException)
             {
@@ -528,9 +576,6 @@ namespace SiecNeuronowaMLP
                 File.WriteAllLines(bledyFilePath, siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
                 Console.WriteLine($"Błędy zapisano do pliku: {bledyFilePath}");
             }
-
-
-
         }
 
         static string zmienNaIndex(int indeks)
