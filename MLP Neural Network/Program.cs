@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -88,6 +89,7 @@ namespace SiecNeuronowaMLP
         public bool UzywajBiasu { get; private set; }
         public double LearningRate { get; set; }
         public double Momentum { get; set; }
+        public List<double> wszystkieBledy { get; set; }
 
         public SiecNeuronowa(int[] architektura, bool useBias, double learningRate = 0.1, double momentum = 0.9)
         {
@@ -100,6 +102,7 @@ namespace SiecNeuronowaMLP
             UzywajBiasu = useBias;
             LearningRate = learningRate;
             Momentum = momentum;
+            wszystkieBledy = new List<double>();
 
             for (int i = 1; i < architektura.Length; i++)
             {
@@ -135,11 +138,12 @@ namespace SiecNeuronowaMLP
                     PropagujWstecz(bledyWyjsciowe, daneWejsciowe[m]);
                 }
 
-                // wyswietlanie bledu co 100 epok
-                if (epoka % 100 == 0)
+                // wyswietlanie bledu co 50 epok
+                if (epoka % 50 == 0)
                 {
                     double bladSredniokwadratowy = ObliczBladSredniokwadratowy(daneWejsciowe, oczekiwaneWyjscia);
-                    Console.WriteLine($"Epoka: {epoka}, Błąd: {bladSredniokwadratowy}");
+                    wszystkieBledy.Add(bladSredniokwadratowy);
+                    //Console.WriteLine($"Epoka: {epoka}, Błąd: {bladSredniokwadratowy}");
                 }
             }
         }
@@ -347,7 +351,7 @@ namespace SiecNeuronowaMLP
 
                 int[] architektura = { 4, 8, 3 }; // 4 wejścia 12 neuronów ukrytych 3 wyjścia 
                 bool useBias = true;
-                double learningRate = 0.1;
+                double learningRate = 0.7;
                 double momentum = 0.9;
                 int liczbaEpok = 10001;
 
@@ -377,9 +381,26 @@ namespace SiecNeuronowaMLP
                 double procentPoprawnych = (double)poprawneOdpowiedzi / daneWejscioweTest.Count * 100;
                 Console.WriteLine($"\nDokładność testu: {procentPoprawnych:F2}% ({poprawneOdpowiedzi}/{daneWejscioweTest.Count})");
 
+                string saveBledy = "wszystkieBledy.txt";
+                File.WriteAllLines(saveBledy, siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
+
                 string savePath = "siec_iris.txt";
                 siec.ZapiszSiec(savePath);
                 SiecNeuronowa wczytanaSiec = SiecNeuronowa.WczytajSiec(savePath);
+
+                string relativePath = Path.Combine("..", "..", "..", "..", "Neural MLP Network", "bin", "Debug", "net9.0-windows", "Neural MLP Network.exe");
+                string fullPath = Path.GetFullPath(relativePath);
+
+                if (File.Exists(fullPath))
+                {
+                    Process.Start(fullPath);
+                }
+                else
+                {
+                    Console.WriteLine("Nie znaleziono pliku View.exe! Sprawdź ścieżkę.");
+                }
+
+
             }
             catch (FileNotFoundException)
             {
