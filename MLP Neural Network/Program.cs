@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -290,194 +291,108 @@ namespace SiecNeuronowaMLP
     {
         static void Main(string[] args)
         {
+            string filePath = "dane.txt";
+            List<List<double>> daneWejscioweNauka = new List<List<double>>();
+            List<List<double>> oczekiwaneWyjsciaNauka = new List<List<double>>();
+            List<List<double>> daneWejscioweTest = new List<List<double>>();
+            List<List<double>> oczekiwaneWyjsciaTest = new List<List<double>>();
+            Dictionary<string, List<double>> etykietyKlucze = new Dictionary<string, List<double>>();
+            int indeksEtykiety = 0;
+            Dictionary<string, List<List<double>>> danePosortowane = new Dictionary<string, List<List<double>>>();
 
-            //NA TEn moment test na danych wpisanych z palucha :D
-            List<List<double>> daneWejscioweNauka = new List<List<double>>
+            try
             {
-                new List<double> { 5.1, 3.5, 1.4, 0.2 }, // 0
-                new List<double> { 7.0, 3.2, 4.7, 1.4 }, // 1
-                new List<double> { 4.9, 3.0, 1.4, 0.2 }, // 0
-                new List<double> { 4.7, 3.2, 1.3, 0.2 }, // 0
-                new List<double> { 5.7, 2.8, 4.5, 1.3 }, // 1
+                List<string> linie = File.ReadAllLines(filePath).ToList();
 
-                new List<double> { 4.6, 3.1, 1.5, 0.2 }, // 0
-                new List<double> { 5.0, 3.6, 1.4, 0.2 }, // 0
-                new List<double> { 4.6, 3.4, 1.4, 0.3 }, // 0
-                new List<double> { 6.4, 3.2, 4.5, 1.5 }, // 1
-                new List<double> { 5.0, 3.4, 1.5, 0.2 }, // 0
+                foreach (var linia in linie)
+                {
+                    string[] pola = linia.Split(',');
+                    if (pola.Length == 5)
+                    {
+                        List<double> cechy = pola.Take(4)
+                            .Select(s => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture))
+                            .ToList();
+                        string etykieta = pola[4];
 
-                new List<double> { 4.4, 2.9, 1.4, 0.2 }, // 0
-                new List<double> { 6.3, 3.3, 6.0, 2.5 }, // 2
-                new List<double> { 6.9, 3.1, 4.9, 1.5 }, // 1
-                new List<double> { 5.5, 2.3, 4.0, 1.3 }, // 1
-                new List<double> { 6.5, 2.8, 4.6, 1.5 }, // 1
+                        if (!etykietyKlucze.ContainsKey(etykieta))
+                        {
+                            etykietyKlucze[etykieta] = new List<double> { 0, 0, 0 };
+                            etykietyKlucze[etykieta][indeksEtykiety++] = 1;
+                            danePosortowane[etykieta] = new List<List<double>>();
+                        }
+                        danePosortowane[etykieta].Add(cechy);
+                    }
+                }
 
-                new List<double> { 4.9, 3.1, 1.5, 0.1 }, // 0
-                new List<double> { 6.3, 3.3, 4.7, 1.6 }, // 1
-                new List<double> { 4.9, 2.4, 3.3, 1.0 }, // 1
-                new List<double> { 5.8, 2.7, 5.1, 1.9 }, // 2
-                new List<double> { 7.1, 3.0, 5.9, 2.1 }, // 2
+                foreach (var gatunekData in danePosortowane)
+                {
+                    string gatunek = gatunekData.Key;
+                    List<List<double>> daneGatunku = gatunekData.Value;
+                    List<double> kluczEtykiety = etykietyKlucze[gatunek];
 
-                new List<double> { 5.2, 2.7, 3.9, 1.4 }, // 1
-                new List<double> { 6.3, 2.9, 5.6, 1.8 }, // 2
-                new List<double> { 6.6, 2.9, 4.6, 1.3 }, // 1
-                new List<double> { 6.5, 3.0, 5.8, 2.2 }, // 2
-                new List<double> { 7.6, 3.0, 6.6, 2.1 }, // 2
+                    for (int i = 0; i < daneGatunku.Count; i++)
+                    {
+                        if (i < 40)
+                        {
+                            daneWejscioweNauka.Add(daneGatunku[i]);
+                            oczekiwaneWyjsciaNauka.Add(kluczEtykiety.ToList()); 
+                        }
+                        else
+                        {
+                            daneWejscioweTest.Add(daneGatunku[i]);
+                            oczekiwaneWyjsciaTest.Add(kluczEtykiety.ToList());
+                        }
+                    }
+                }
 
-                new List<double> { 5.4, 3.9, 1.7, 0.4 }, // 0
-                new List<double> { 4.9, 2.5, 4.5, 1.7 }, // 2
-                new List<double> { 7.3, 2.9, 6.3, 1.8 }, // 2
-                new List<double> { 6.7, 2.5, 5.8, 1.8 }, // 2
-                new List<double> { 7.2, 3.6, 6.1, 2.5 }  // 2
-            };
+                int[] architektura = { 4, 8, 3 }; // 4 wejścia 12 neuronów ukrytych 3 wyjścia 
+                bool useBias = true;
+                double learningRate = 0.1;
+                double momentum = 0.9;
+                int liczbaEpok = 10001;
 
-            // Kodowanie 1-z-K dla wyjsc bo 3 klasy irys
-            List<List<double>> oczekiwaneWyjsciaNauka = new List<List<double>>
-            {
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 1, 0, 0 },
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 1, 0 },
+                SiecNeuronowa siec = new SiecNeuronowa(architektura, useBias, learningRate, momentum);
 
-                new List<double> { 1, 0, 0 },
-                new List<double> { 1, 0, 0 },
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 1, 0, 0 },
+                siec.Trenuj(daneWejscioweNauka, oczekiwaneWyjsciaNauka, liczbaEpok);
 
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 1, 0 },
+                Console.WriteLine("\nWyniki testowania:");
+                int poprawneOdpowiedzi = 0;
+                for (int i = 0; i < daneWejscioweTest.Count; i++)
+                {
+                    List<double> wyjscia = siec.Propaguj(daneWejscioweTest[i]);
+                    int przewidywanyIndeks = wyjscia.IndexOf(wyjscia.Max());
+                    int oczekiwanyIndeks = oczekiwaneWyjsciaTest[i].IndexOf(oczekiwaneWyjsciaTest[i].Max());
 
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 0, 1 },
+                    string przewidywanaKlasa = zmienNaIndex(przewidywanyIndeks);
+                    string oczekiwanaKlasa = zmienNaIndex(oczekiwanyIndeks);
 
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 0, 1 },
+                    Console.WriteLine($"Wejście: [{string.Join(", ", daneWejscioweTest[i])}] -> Przewidywana: {przewidywanaKlasa}, Oczekiwana: {oczekiwanaKlasa}");
 
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 0, 1 } 
-            };
+                    if (przewidywanyIndeks == oczekiwanyIndeks)
+                    {
+                        poprawneOdpowiedzi++;
+                    }
+                }
 
-            List<List<double>> daneWejsciowe = new List<List<double>>
-            {
-                new List<double> { 5.5, 2.6, 4.4, 1.2 }, // 1
-                new List<double> { 5.0, 3.5, 1.3, 0.3 }, // 0
-                new List<double> { 4.5, 2.3, 1.3, 0.3 }, // 0
-                new List<double> { 4.4, 3.2, 1.3, 0.2 }, // 0
-                new List<double> { 5.0, 3.5, 1.6, 0.6 }, // 0
+                double procentPoprawnych = (double)poprawneOdpowiedzi / daneWejscioweTest.Count * 100;
+                Console.WriteLine($"\nDokładność testu: {procentPoprawnych:F2}% ({poprawneOdpowiedzi}/{daneWejscioweTest.Count})");
 
-                new List<double> { 6.7, 3.0, 5.2, 2.3 }, // 2
-                new List<double> { 4.8, 3.0, 1.4, 0.3 }, // 0
-                new List<double> { 5.1, 3.8, 1.6, 0.2 }, // 0
-                new List<double> { 4.6, 3.2, 1.4, 0.2 }, // 0
-                new List<double> { 5.3, 3.7, 1.5, 0.2 }, // 0
-
-                new List<double> { 5.0, 3.3, 1.4, 0.2 }, // 0
-                new List<double> { 5.8, 2.7, 5.1, 1.9 }, // 2
-                new List<double> { 6.1, 3.0, 4.6, 1.4 }, // 1
-                new List<double> { 5.8, 2.6, 4.0, 1.2 }, // 1
-                new List<double> { 5.0, 2.3, 3.3, 1.0 }, // 1
-
-                new List<double> { 5.1, 3.8, 1.9, 0.4 }, // 0
-                new List<double> { 5.6, 2.7, 4.2, 1.3 }, // 1
-                new List<double> { 5.7, 3.0, 4.2, 1.2 }, // 1
-                new List<double> { 5.7, 2.9, 4.2, 1.3 }, // 1
-                new List<double> { 6.2, 2.9, 4.3, 1.3 }, // 1
-
-                new List<double> { 5.1, 2.5, 3.0, 1.1 }, // 1
-                new List<double> { 6.7, 3.1, 5.6, 2.4 }, // 2
-                new List<double> { 6.9, 3.1, 5.1, 2.3 }, // 2
-                new List<double> { 6.8, 3.2, 5.9, 2.3 }, // 2
-                new List<double> { 6.7, 3.3, 5.7, 2.5 }, // 2
-
-                new List<double> { 5.7, 2.8, 4.1, 1.3 }, // 1
-                new List<double> { 6.3, 2.5, 5.0, 1.9 }, // 2
-                new List<double> { 6.5, 3.0, 5.2, 2.0 }, // 2
-                new List<double> { 6.2, 3.4, 5.4, 2.3 }, // 2
-                new List<double> { 5.9, 3.0, 5.1, 1.8 }  // 2
-            };
-
-            List<List<double>> oczekiwaneWyjscia = new List<List<double>>
-            {
-                new List<double> { 0, 1, 0 },
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 },
-
-                new List<double> { 0, 0, 1 },
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 }, 
-                new List<double> { 1, 0, 0 }, 
-
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 0, 1 },
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 1, 0 },
-
-                new List<double> { 1, 0, 0 },
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 1, 0 }, 
-
-                new List<double> { 0, 1, 0 }, 
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 },
-
-                new List<double> { 0, 1, 0 },
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 }, 
-                new List<double> { 0, 0, 1 }  
-            };
-
-
-
-            int[] architektura = { 4, 10, 3 }; // 4 wejścia 10 neuronów ukrytych 3 wyjścia
-            bool useBias = true;
-            double learningRate = 0.1;
-            double momentum = 0.9;
-            int liczbaEpok = 1001;
-
-            SiecNeuronowa siec = new SiecNeuronowa(architektura, useBias, learningRate, momentum);
-
-            siec.Trenuj(daneWejscioweNauka, oczekiwaneWyjsciaNauka, liczbaEpok);
-
-            Console.WriteLine("Wyniki testowania:");
-            for (int i = 0; i < daneWejsciowe.Count; i++)
-            {
-                List<double> wyjscia = siec.Propaguj(daneWejsciowe[i]);
-                int przewidywanyIndeks = wyjscia.IndexOf(wyjscia.Max());
-
-                int oczekiwanyIndeks = oczekiwaneWyjscia[i].IndexOf(oczekiwaneWyjscia[i].Max());
-
-                string przewidywanaKlasa = zmienNaIndex(przewidywanyIndeks);
-                string oczekiwanaKlasa = zmienNaIndex(oczekiwanyIndeks);
-
-                Console.WriteLine($"Wejście: [{string.Join(", ", daneWejsciowe[i])}] -> Przewidywana: {przewidywanaKlasa}, Oczekiwana: {oczekiwanaKlasa}");
+                string savePath = "siec_iris.txt";
+                siec.ZapiszSiec(savePath);
+                SiecNeuronowa wczytanaSiec = SiecNeuronowa.WczytajSiec(savePath);
             }
-
-            string savePath = "siec_iris.txt";
-            siec.ZapiszSiec(savePath);
-            SiecNeuronowa wczytanaSiec = SiecNeuronowa.WczytajSiec(savePath);
+            catch (FileNotFoundException)
+            {
+                Console.WriteLine($"Plik '{filePath}' nie został znaleziony.");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"Wystąpił błąd podczas odczytu pliku: {ex.Message}");
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine("Błąd formatowania danych w pliku.");
+            }
         }
 
         static string zmienNaIndex(int indeks)
