@@ -2,10 +2,8 @@
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Windows;
 
 namespace Neural_MLP_Network
