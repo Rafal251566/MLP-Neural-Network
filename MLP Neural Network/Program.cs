@@ -180,32 +180,35 @@ namespace SiecNeuronowaMLP
                 matrix[rzeczywiste[i], przewidywane[i]]++;
 
             Console.WriteLine("\nMacierz pomyłek:");
+            Console.WriteLine("----------------------------");
+            Console.Write("  \t");
+            for (int i = 0; i < liczbaKlas; i++)
+                Console.Write($"{loader.zmienNaIndex(i)}\t");
+            Console.WriteLine();
+            Console.WriteLine("----------------------------");
             for (int i = 0; i < liczbaKlas; i++)
             {
+                Console.Write($"{loader.zmienNaIndex(i)}\t");
                 for (int j = 0; j < liczbaKlas; j++)
                     Console.Write(matrix[i, j] + "\t");
                 Console.WriteLine();
             }
+            Console.WriteLine("----------------------------");
 
             int poprawne = przewidywane.Zip(rzeczywiste, (p, r) => p == r).Count(x => x);
             double accuracy = (double)poprawne / przewidywane.Count;
-            Console.WriteLine($"\nDokładność testu: {accuracy:F2}");
+            Console.WriteLine($"\nOgólny procent rozpoznania: {accuracy:P2}");
 
+            Console.WriteLine("\nProcent rozpoznania dla każdej klasy:");
+            Console.WriteLine("-------------------------------------");
             for (int i = 0; i < liczbaKlas; i++)
             {
                 int tp = matrix[i, i];
-                int fp = Enumerable.Range(0, liczbaKlas).Where(j => j != i).Sum(j => matrix[j, i]);
-                int fn = Enumerable.Range(0, liczbaKlas).Where(j => j != i).Sum(j => matrix[i, j]);
-
-                double precision = tp + fp == 0 ? 0 : (double)tp / (tp + fp);
-                double recall = tp + fn == 0 ? 0 : (double)tp / (tp + fn);
-                double f = precision + recall == 0 ? 0 : 2 * precision * recall / (precision + recall);
-
-                Console.WriteLine($"\nKlasa {loader.zmienNaIndex(i)}:");
-                Console.WriteLine($"Precision: {precision:F2}");
-                Console.WriteLine($"Recall: {recall:F2}");
-                Console.WriteLine($"F-measure: {f:F2}");
+                int iloscWKlasie = rzeczywiste.Count(r => r == i);
+                double procentKlasy = iloscWKlasie == 0 ? 0 : (double)tp / iloscWKlasie;
+                Console.WriteLine($"Klasa {loader.zmienNaIndex(i)}: {procentKlasy:P2}");
             }
+            Console.WriteLine("-------------------------------------");
         }
 
         private static void TestujSiec(SiecNeuronowa siec, DataLoader loader)
@@ -216,10 +219,9 @@ namespace SiecNeuronowaMLP
 
             string sciezkaDoPliku = "wyniki_testu.txt";
 
-            // Wyczyść plik przed rozpoczęciem testowania
             File.WriteAllText(sciezkaDoPliku, string.Empty);
 
-            using (StreamWriter sw = new StreamWriter(sciezkaDoPliku, true)) // Teraz dopisujemy do wyczyszczonego pliku
+            using (StreamWriter sw = new StreamWriter(sciezkaDoPliku, true)) 
             {
                 for (int i = 0; i < loader.daneWejscioweTest.Count; i++)
                 {
@@ -250,10 +252,10 @@ namespace SiecNeuronowaMLP
                         sw.WriteLine($"[{string.Join(", ", wagiWarstwyUkrytej.SelectMany(x => x))}]");
                     }
                     sw.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-                    sw.WriteLine(); // Dodaj pustą linię po każdym wzorcu
-                                    //Console.WriteLine($"\nWzorzec {i + 1}:");
-                                    //Console.WriteLine($"  Przewidywana klasa: {loader.zmienNaIndex(przew)}");
-                                    //Console.WriteLine($"  Oczekiwana klasa: {loader.zmienNaIndex(oczek)}");
+                    sw.WriteLine();
+                    Console.WriteLine($"\nWzorzec {i + 1}:");
+                    Console.WriteLine($"  Przewidywana klasa: {loader.zmienNaIndex(przew)}");
+                    Console.WriteLine($"  Oczekiwana klasa: {loader.zmienNaIndex(oczek)}");
 
                     przewidywane.Add(przew);
                     rzeczywiste.Add(oczek);
