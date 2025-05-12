@@ -11,6 +11,7 @@ namespace SiecNeuronowaMLP
             Console.WriteLine("Wybierz opcję:");
             Console.WriteLine("1 - Uczenie i testowanie sieci dla danych Iris");
             Console.WriteLine("2 - Uczenie autoenkodera");
+            Console.WriteLine("3 - Wczytanie sieci z pliku");
             Console.Write("Twój wybór: ");
 
             string? wybor = Console.ReadLine();
@@ -22,6 +23,14 @@ namespace SiecNeuronowaMLP
                     break;
                 case "2":
                     UruchomAutoenkoder();
+                    break;
+                case "3":
+                    DataLoader loader = new();
+                    Console.WriteLine("Wpisz nazwę pliku: ");
+                    string path = Console.ReadLine();
+                    var siec = SiecNeuronowa.WczytajSiec(path);
+                    loader.ReadDataFromFile();
+                    TestujSiec(siec, loader);
                     break;
                 default:
                     Console.WriteLine("Nieprawidłowy wybór.");
