@@ -1,4 +1,6 @@
-﻿namespace MLP_Neural_Network
+﻿using SiecNeuronowaMLP;
+
+namespace MLP_Neural_Network
 {
     class SiecNeuronowa
     {
@@ -39,10 +41,14 @@
             return wyjscia;
         }
 
-        public void Trenuj(List<List<double>> daneWejsciowe, List<List<double>> oczekiwaneWyjscia, int liczbaEpok)
+        public void Trenuj(List<List<double>> daneWejsciowe, List<List<double>> oczekiwaneWyjscia, int liczbaEpok, bool losowaKolejnosc, double blad)
         {
             for (int epoka = 0; epoka < liczbaEpok; epoka++)
             {
+                if (losowaKolejnosc == true)
+                {
+                    Program.ShuffleData(ref daneWejsciowe, ref oczekiwaneWyjscia);
+                }
                 for (int m = 0; m < daneWejsciowe.Count; m++)
                 {
                     // najpierw propagacja w przód
@@ -62,7 +68,7 @@
                     wszystkieBledy.Add(bladSredniokwadratowy);
                     //Console.WriteLine($"Epoka: {epoka}, Błąd: {bladSredniokwadratowy}");
 
-                    if (bladSredniokwadratowy < 0.016)
+                    if (bladSredniokwadratowy < blad)
                     {
                         return;
                     }

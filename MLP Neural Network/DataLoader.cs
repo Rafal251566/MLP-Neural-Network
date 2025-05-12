@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace MLP_Neural_Network
 {
@@ -10,8 +11,9 @@ namespace MLP_Neural_Network
         public List<List<double>> oczekiwaneWyjsciaTest = new();
         public Dictionary<string, List<double>> etykietyKlucze = new();
         public int indeksEtykiety = 0;
-        public Dictionary<string, List<List<double>>> danePosortowane = new();
-        public readonly static string filePath = "dane.txt";
+        public Dictionary<string, List<List<double>>> danePosortowaneWejscia = new(); 
+        public Dictionary<string, List<List<double>>> danePosortowaneWyjscia = new(); 
+        public readonly static string filePath = "wzorce.txt";
 
         public void ReadDataFromFile()
         {
@@ -21,51 +23,61 @@ namespace MLP_Neural_Network
 
                 foreach (var linia in linie)
                 {
-                    string[] pola = linia.Split(',');
-                    if (pola.Length == 5)
+                    Match match = Regex.Match(linia, @"\(\((.*?)\),\((.*?)\)\)");
+                    if (match.Success)
                     {
-                        List<double> cechy = pola.Take(4)
+                        string wejsciaString = match.Groups[1].Value;
+                        string wyjsciaString = match.Groups[2].Value;
+
+                        List<double> wejscia = wejsciaString.Split(',')
                             .Select(s => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture))
                             .ToList();
-                        string etykieta = pola[4];
 
-                        if (!etykietyKlucze.ContainsKey(etykieta))
+                        List<double> wyjscia = wyjsciaString.Split(',')
+                            .Select(s => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture))
+                            .ToList();
+
+                        string kluczWyjscia = string.Join(",", wyjscia);
+
+                        if (!danePosortowaneWejscia.ContainsKey(kluczWyjscia))
                         {
-                            etykietyKlucze[etykieta] = new List<double> { 0, 0, 0 };
-                            etykietyKlucze[etykieta][indeksEtykiety++] = 1;
-                            danePosortowane[etykieta] = new List<List<double>>();
+                            danePosortowaneWejscia[kluczWyjscia] = new List<List<double>>();
+                            danePosortowaneWyjscia[kluczWyjscia] = new List<List<double>>();
+                            etykietyKlucze[kluczWyjscia] = new List<double>(wyjscia);
                         }
-                        danePosortowane[etykieta].Add(cechy);
+                        danePosortowaneWejscia[kluczWyjscia].Add(wejscia);
+                        danePosortowaneWyjscia[kluczWyjscia].Add(wyjscia);
                     }
                 }
 
-                foreach (var gatunekData in danePosortowane)
+                foreach (var klasaData in danePosortowaneWejscia)
                 {
-                    string gatunek = gatunekData.Key;
-                    List<List<double>> daneGatunku = gatunekData.Value;
-                    List<double> kluczEtykiety = etykietyKlucze[gatunek];
+                    string kluczKlasy = klasaData.Key;
+                    List<List<double>> wejsciaKlasy = klasaData.Value;
+                    List<List<double>> wyjsciaKlasy = danePosortowaneWyjscia[kluczKlasy];
+                    List<double> oczekiwaneWyjscieKlasy = etykietyKlucze[kluczKlasy];
 
-                    for (int i = 0; i < daneGatunku.Count; i++)
+                    for (int i = 0; i < wejsciaKlasy.Count; i++)
                     {
                         if (i < 40)
                         {
-                            daneWejscioweNauka.Add(daneGatunku[i]);
-                            oczekiwaneWyjsciaNauka.Add(kluczEtykiety.ToList());
+                            daneWejscioweNauka.Add(wejsciaKlasy[i]);
+                            oczekiwaneWyjsciaNauka.Add(oczekiwaneWyjscieKlasy.ToList());
                         }
                         else
                         {
-                            daneWejscioweTest.Add(daneGatunku[i]);
-                            oczekiwaneWyjsciaTest.Add(kluczEtykiety.ToList());
+                            daneWejscioweTest.Add(wejsciaKlasy[i]);
+                            oczekiwaneWyjsciaTest.Add(oczekiwaneWyjscieKlasy.ToList());
                         }
                     }
                 }
-
             }
-            catch
+            catch (Exception ex)
             {
-
+                Console.WriteLine($"Wystąpił błąd podczas odczytu pliku: {ex.Message}");
             }
         }
+
         public string zmienNaIndex(int indeks)
         {
             switch (indeks)
@@ -78,5 +90,3 @@ namespace MLP_Neural_Network
         }
     }
 }
-    
-

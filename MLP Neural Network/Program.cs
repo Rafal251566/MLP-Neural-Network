@@ -37,7 +37,6 @@ namespace SiecNeuronowaMLP
             try
             {
                 loader.ReadDataFromFile();
-                ShuffleData(ref loader.daneWejscioweNauka, ref loader.oczekiwaneWyjsciaNauka);
                 ShuffleData(ref loader.daneWejscioweTest, ref loader.oczekiwaneWyjsciaTest);
 
                 Console.WriteLine("\nKonfiguracja sieci dla danych Iris:");
@@ -61,12 +60,19 @@ namespace SiecNeuronowaMLP
                 Console.Write("Podaj liczbę epok (np. 10001): ");
                 int epokiMLP = int.TryParse(Console.ReadLine(), out var epoki) ? epoki : 10001;
 
+                Console.Write("Podaj wartość błędu sieci przy którym zatrzyma się nauka (np. 0.015): ");
+                double bladSieci = 0.0;
+                bladSieci = double.TryParse(Console.ReadLine(), NumberStyles.Float, CultureInfo.InvariantCulture, out var blad) ? blad : 0.015;
+
                 Console.Write("Czy używać biasu? (tak/nie): ");
                 bool uzywajBiasu = Console.ReadLine()?.ToLower() == "tak";
 
+                Console.Write("Czy nauka ma być prowadzona przy losowej kolejnosci podawania wzorców? (tak/nie) ");
+                bool losowaKolejnosc = Console.ReadLine()?.ToLower() == "tak";
+
                 var siec = new SiecNeuronowa(architekturaMLP, uzywajBiasu, lrMLP, momentumMLP);
                 Console.WriteLine("\nRozpoczęto trening sieci dla danych Iris...");
-                siec.Trenuj(loader.daneWejscioweNauka, loader.oczekiwaneWyjsciaNauka, epokiMLP);
+                siec.Trenuj(loader.daneWejscioweNauka, loader.oczekiwaneWyjsciaNauka, epokiMLP,losowaKolejnosc, bladSieci);
                 Console.WriteLine("Trening zakończony.");
                 TestujSiec(siec, loader);
 
@@ -129,7 +135,7 @@ namespace SiecNeuronowaMLP
         {
             SiecNeuronowa siec = new(architektura, useBias, lr, momentum);
             Console.WriteLine("\nRozpoczęto trening autoenkodera...");
-            siec.Trenuj(dane, oczekiwane, epoki);
+            siec.Trenuj(dane, oczekiwane, epoki,true, 0.016);
             Console.WriteLine("Trening autoenkodera zakończony.");
 
             Console.WriteLine("\nWyjścia sieci po treningu:");
@@ -154,8 +160,6 @@ namespace SiecNeuronowaMLP
             {
                 Process.Start(Path.GetFullPath("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe"), $"{zapisSciezka} {info}");
             }
-
-
         }
 
         private static void ObliczMacierzPomyłek(List<int> przewidywane, List<int> rzeczywiste, DataLoader loader)
@@ -197,27 +201,61 @@ namespace SiecNeuronowaMLP
 
         private static void TestujSiec(SiecNeuronowa siec, DataLoader loader)
         {
-            Console.WriteLine("\nWyniki testowania:");
+            Console.WriteLine("\nWyniki testowania z wyznaczeniem błędu dla każdego wzorca:");
             List<int> przewidywane = new();
             List<int> rzeczywiste = new();
 
-            for (int i = 0; i < loader.daneWejscioweTest.Count; i++)
+            string sciezkaDoPliku = "wyniki_testu.txt";
+
+            // Wyczyść plik przed rozpoczęciem testowania
+            File.WriteAllText(sciezkaDoPliku, string.Empty);
+
+            using (StreamWriter sw = new StreamWriter(sciezkaDoPliku, true)) // Teraz dopisujemy do wyczyszczonego pliku
             {
-                var wyjscia = siec.Propaguj(loader.daneWejscioweTest[i]);
-                int przew = wyjscia.IndexOf(wyjscia.Max());
-                int oczek = loader.oczekiwaneWyjsciaTest[i].IndexOf(loader.oczekiwaneWyjsciaTest[i].Max());
+                for (int i = 0; i < loader.daneWejscioweTest.Count; i++)
+                {
+                    var wyjscia = siec.Propaguj(loader.daneWejscioweTest[i]);
+                    var oczekiwane = loader.oczekiwaneWyjsciaTest[i];
+                    int przew = wyjscia.IndexOf(wyjscia.Max());
+                    int oczek = oczekiwane.IndexOf(oczekiwane.Max());
 
-                Console.WriteLine($"Wejście: [{string.Join(", ", loader.daneWejscioweTest[i])}] -> Przewidywana: {loader.zmienNaIndex(przew)}," +
-                                  $" Oczekiwana: {loader.zmienNaIndex(oczek)}");
+                    double blad = wyjscia.Zip(oczekiwane, (o, e) => Math.Pow(o - e, 2)).Sum();
+                    sw.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    sw.WriteLine($"Wejście: [{string.Join(", ", loader.daneWejscioweTest[i])}]");
+                    sw.WriteLine($"\nSuma kwadratów błędów: {blad:F4}");
+                    sw.WriteLine($"\nOczekiwane wyjście: [{string.Join(", ", oczekiwane)}]");
+                    var bledyKonkretne = wyjscia.Zip(oczekiwane, (o, e) => Math.Pow(o - e, 2)).ToList();
+                    sw.WriteLine($"\nBłędy konkretne: [{string.Join(", ", bledyKonkretne.Select(b => b.ToString("F6")))}]");
+                    sw.WriteLine($"\nWyjście sieci: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+                    sw.WriteLine("\nWagi warstwy wyjsciowej:");
+                    var wagiWarstwyWysciowej = siec.Warstwy[1].Neurony.Select(n => n.Wagi.Select(w => w.ToString("F3")).ToList()).ToList();
+                    sw.WriteLine($"[{string.Join(", ", wagiWarstwyWysciowej.SelectMany(x => x))}]");
+                    sw.WriteLine("\nWyjścia warstwy ukrytej:");
+                    var wyjsciaWarstwyUkrytej = siec.Warstwy[0].Neurony.Select(n => n.Wyjscie).ToList();
+                    sw.WriteLine($"[{string.Join(", ", wyjsciaWarstwyUkrytej.Select(x => x.ToString("F3")))}]");
 
-                przewidywane.Add(przew);
-                rzeczywiste.Add(oczek);
+                    sw.WriteLine("\nWagi warstwy ukrytej:");
+                    for (int j = siec.Warstwy.Count - 1; j > 0; j--)
+                    {
+                        var wagiWarstwyUkrytej = siec.Warstwy[j].Neurony.Select(n => n.Wagi.Select(w => w.ToString("F3")).ToList()).ToList();
+                        sw.WriteLine($"[{string.Join(", ", wagiWarstwyUkrytej.SelectMany(x => x))}]");
+                    }
+                    sw.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    sw.WriteLine(); // Dodaj pustą linię po każdym wzorcu
+                                    //Console.WriteLine($"\nWzorzec {i + 1}:");
+                                    //Console.WriteLine($"  Przewidywana klasa: {loader.zmienNaIndex(przew)}");
+                                    //Console.WriteLine($"  Oczekiwana klasa: {loader.zmienNaIndex(oczek)}");
+
+                    przewidywane.Add(przew);
+                    rzeczywiste.Add(oczek);
+                }
             }
 
+            Console.WriteLine($"Dane zostały zapisane do pliku: {sciezkaDoPliku}");
             ObliczMacierzPomyłek(przewidywane, rzeczywiste, loader);
         }
 
-        private static void ShuffleData(ref List<List<double>> dane, ref List<List<double>> etykiety)
+        public static void ShuffleData(ref List<List<double>> dane, ref List<List<double>> etykiety)
         {
             Random random = new Random();
             List<int> indeksy = Enumerable.Range(0, dane.Count).OrderBy(_ => random.Next()).ToList();
