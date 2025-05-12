@@ -104,16 +104,20 @@
 
                     bledyWarstwyBieżącej.Add(delta);
 
-                    // aktualizuje wage
+                    // aktualizuje wage z uwzględnieniem momentum
                     for (int k = 0; k < Warstwy[i].Neurony[j].Wagi.Count; k++)
                     {
-                        Warstwy[i].Neurony[j].Wagi[k] += LearningRate * delta * wejsciaDoWarstwy[k] + Momentum * delta;
+                        double zmianaWagi = LearningRate * delta * wejsciaDoWarstwy[k] + Momentum * Warstwy[i].Neurony[j].PoprzednieZmianyWag[k];
+                        Warstwy[i].Neurony[j].Wagi[k] += zmianaWagi;
+                        Warstwy[i].Neurony[j].PoprzednieZmianyWag[k] = zmianaWagi;
                     }
 
-                    //a ti aktualizuje bias
+                    // aktualizuje bias z uwzględnieniem momentum
                     if (UzywajBiasu)
                     {
-                        Warstwy[i].Neurony[j].Bias += LearningRate * delta + Momentum * delta;
+                        double zmianaBiasu = LearningRate * delta + Momentum * Warstwy[i].Neurony[j].PoprzedniaZmianaBiasu;
+                        Warstwy[i].Neurony[j].Bias += zmianaBiasu;
+                        Warstwy[i].Neurony[j].PoprzedniaZmianaBiasu = zmianaBiasu;
                     }
                 }
                 bledyWarstwyNastępnej = bledyWarstwyBieżącej;

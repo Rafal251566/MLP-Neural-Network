@@ -1,5 +1,4 @@
-﻿
-namespace MLP_Neural_Network
+﻿namespace MLP_Neural_Network
 {
     class Neuron
     {
@@ -7,29 +6,37 @@ namespace MLP_Neural_Network
         public double Bias { get; set; }
         public double Wyjscie { get; set; }
         public double PochodnaAktywacji { get; set; }
+
+        public List<double> PoprzednieZmianyWag { get; set; }
+        public double PoprzedniaZmianaBiasu { get; set; }
+
         public Neuron(int liczbaWejsc, bool useBias)
         {
             Wagi = new List<double>();
+            PoprzednieZmianyWag = new List<double>(); 
             Random random = new Random();
             for (int i = 0; i < liczbaWejsc; i++)
             {
                 Wagi.Add(random.NextDouble() * 2 - 1); //wartosc z zakresu -1 : 1
+                PoprzednieZmianyWag.Add(0.0); 
             }
             if (useBias)
             {
                 Bias = random.NextDouble() * 2 - 1;
+                PoprzedniaZmianaBiasu = 0.0; 
             }
             else
             {
                 Bias = 0;
+                PoprzedniaZmianaBiasu = 0.0;
             }
             Wyjscie = 0;
-            PochodnaAktywacji = 0; // Inicjalizacja PochodnaAktywacji
+            PochodnaAktywacji = 0;
         }
 
         public static double FunkcjaAktywacji(double x)
         {
-            return 1 / (1 + Math.Exp(-x)); //beta = 1  unipolarna  
+            return 1 / (1 + Math.Exp(-x)); //beta = 1  unipolarna
         }
 
         public static double PochodnaFunkcjiAktywacji(double x)

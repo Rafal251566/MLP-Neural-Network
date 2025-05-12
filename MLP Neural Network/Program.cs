@@ -8,44 +8,95 @@ namespace SiecNeuronowaMLP
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Wybierz opcję:");
+            Console.WriteLine("1 - Uczenie i testowanie sieci dla danych Iris");
+            Console.WriteLine("2 - Uczenie autoenkodera");
+            Console.Write("Twój wybór: ");
+
+            string? wybor = Console.ReadLine();
+
+            switch (wybor)
+            {
+                case "1":
+                    UruchomIrysy();
+                    break;
+                case "2":
+                    UruchomAutoenkoder();
+                    break;
+                default:
+                    Console.WriteLine("Nieprawidłowy wybór.");
+                    break;
+            }
+
+            Console.WriteLine("\nKoniec programu.");
+        }
+
+        static void UruchomIrysy()
+        {
             DataLoader loader = new();
-            int[] architekturaMLP = { 4, 5, 3 };
-            int[] architekturaAutoenkoder = { 4, 2, 4 };
-
-            double lrMLP = 0.4, momentumMLP = 0.6;
-            int epokiMLP = 10001;
-            double lrAuto = 0.6, momentumAuto = 0.0;
-            int epokiAuto = 1000;
-
             try
             {
                 loader.ReadDataFromFile();
-
                 ShuffleData(ref loader.daneWejscioweNauka, ref loader.oczekiwaneWyjsciaNauka);
                 ShuffleData(ref loader.daneWejscioweTest, ref loader.oczekiwaneWyjsciaTest);
 
-                var siec = new SiecNeuronowa(architekturaMLP, true, lrMLP, momentumMLP);
+                Console.WriteLine("\nKonfiguracja sieci dla danych Iris:");
+
+                Console.Write("Podaj architekturę sieci (liczby neuronów w warstwach oddzielone przecinkami, np. 4,5,3): ");
+                string? architekturaStr = Console.ReadLine();
+                int[] architekturaMLP = architekturaStr?.Split(',').Select(int.Parse).ToArray() ?? new int[] { 4, 5, 3 };
+
+                Console.Write("Podaj learning rate (np. 0.4): ");
+                double lrMLP = double.TryParse(Console.ReadLine(), NumberStyles.Float, CultureInfo.InvariantCulture, out var lr) ? lr : 0.4;
+
+                Console.Write("Czy używać momentum? (tak/nie): ");
+                bool uzywajMomentum = Console.ReadLine()?.ToLower() == "tak";
+                double momentumMLP = 0.0;
+                if (uzywajMomentum)
+                {
+                    Console.Write("Podaj wartość momentum (np. 0.6): ");
+                    momentumMLP = double.TryParse(Console.ReadLine(), NumberStyles.Float, CultureInfo.InvariantCulture, out var mom) ? mom : 0.6;
+                }
+
+                Console.Write("Podaj liczbę epok (np. 10001): ");
+                int epokiMLP = int.TryParse(Console.ReadLine(), out var epoki) ? epoki : 10001;
+
+                Console.Write("Czy używać biasu? (tak/nie): ");
+                bool uzywajBiasu = Console.ReadLine()?.ToLower() == "tak";
+
+                var siec = new SiecNeuronowa(architekturaMLP, uzywajBiasu, lrMLP, momentumMLP);
+                Console.WriteLine("\nRozpoczęto trening sieci dla danych Iris...");
                 siec.Trenuj(loader.daneWejscioweNauka, loader.oczekiwaneWyjsciaNauka, epokiMLP);
+                Console.WriteLine("Trening zakończony.");
                 TestujSiec(siec, loader);
 
-                File.WriteAllLines("wszystkieBledy.txt", siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
+                File.WriteAllLines("wszystkieBledy_iris.txt", siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
                 siec.ZapiszSiec("siec_iris.txt");
 
                 if (File.Exists("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe"))
-                    Process.Start(Path.GetFullPath("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe"));
+                {
+                        Process.Start(Path.GetFullPath("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe"),"wszystkieBledy_iris.txt Irysów");
+                }
 
             }
             catch (FileNotFoundException) { Console.WriteLine($"Plik '{DataLoader.filePath}' nie został znaleziony."); }
             catch (IOException ex) { Console.WriteLine($"Błąd I/O: {ex.Message}"); }
             catch (FormatException) { Console.WriteLine("Błąd formatowania danych."); }
+            catch (Exception ex) { Console.WriteLine($"Wystąpił nieoczekiwany błąd: {ex.Message}"); }
+        }
 
+        static void UruchomAutoenkoder()
+        {
+            int[] architekturaAutoenkoder = { 4, 2, 4 };
+            double lrAuto = 0.6, momentumAuto = 0.0;
+            int epokiAuto = 1000;
             var daneAuto = new List<List<double>> {
                 new() { 1, 0, 0, 0 }, new() { 0, 1, 0, 0 },
                 new() { 0, 0, 1, 0 }, new() { 0, 0, 0, 1 }
             };
             var oczekiwaneAuto = new List<List<double>>(daneAuto);
 
-            Console.WriteLine("\n--- Autoenkoder z biasem ---");
+            Console.WriteLine("\n\n--- Autoenkoder z biasem ---");
             TrenujAutoenkoder(architekturaAutoenkoder, true, lrAuto, momentumAuto, epokiAuto, daneAuto, oczekiwaneAuto);
 
             Console.WriteLine("\n--- Autoenkoder bez biasu ---");
@@ -57,11 +108,13 @@ namespace SiecNeuronowaMLP
 
             foreach (var (lr, mom) in konfiguracje)
             {
-                string sciezka = $"bledy_lr{lr}_momentum{mom}.txt";
-                Console.WriteLine($"\n--- Autoenkoder (LR={lr}, Momentum={mom}) ---");
-                TrenujAutoenkoder(architekturaAutoenkoder, true, lr, mom, epokiAuto, daneAuto, oczekiwaneAuto, sciezka);
+                string sciezka = $"bledy_lr{lr}_momentum{mom}_auto.txt";
+                string info = $"Autoenkoder_(LR={lr}_Momentum={mom})";
+                Console.WriteLine($"\n\n--- Autoenkoder (LR={lr}, Momentum={mom}) ---");
+                TrenujAutoenkoder(architekturaAutoenkoder, true, lr, mom, epokiAuto, daneAuto, oczekiwaneAuto, sciezka, info);
             }
         }
+
         private static void TrenujAutoenkoder(
             int[] architektura,
             bool useBias,
@@ -70,24 +123,39 @@ namespace SiecNeuronowaMLP
             int epoki,
             List<List<double>> dane,
             List<List<double>> oczekiwane,
-            string? zapisSciezka = null
+            string zapisSciezka = null,
+            string info = null
             )
         {
             SiecNeuronowa siec = new(architektura, useBias, lr, momentum);
+            Console.WriteLine("\nRozpoczęto trening autoenkodera...");
             siec.Trenuj(dane, oczekiwane, epoki);
+            Console.WriteLine("Trening autoenkodera zakończony.");
 
             Console.WriteLine("\nWyjścia sieci po treningu:");
             for (int i = 0; i < dane.Count; i++)
             {
                 var wyjscia = siec.Propaguj(dane[i]);
-                Console.WriteLine($"Wejście: [{string.Join(", ", dane[i])}] -> Wyjście: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+                Console.WriteLine($"\nWejście: [{string.Join(", ", dane[i])}] -> Wyjście: [{string.Join(", ", wyjscia.Select(x => x.ToString("F3")))}]");
+
+                Console.WriteLine(" \n Wyjścia warstwy ukrytej:");
+                var wyjsciaWarstwyUkrytej = siec.Warstwy[0].Neurony.Select(n => n.Wyjscie).ToList();
+                Console.WriteLine($"  [{string.Join(", ", wyjsciaWarstwyUkrytej.Select(x => x.ToString("F3")))}]");
             }
+
 
             if (zapisSciezka != null)
             {
                 File.WriteAllLines(zapisSciezka, siec.wszystkieBledy.Select(b => b.ToString(CultureInfo.InvariantCulture)));
                 Console.WriteLine($"Błędy zapisano do pliku: {zapisSciezka}");
             }
+
+            if (File.Exists("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe") && zapisSciezka != null)
+            {
+                Process.Start(Path.GetFullPath("../../../../Neural MLP Network/bin/Debug/net9.0-windows/Neural MLP Network.exe"), $"{zapisSciezka} {info}");
+            }
+
+
         }
 
         private static void ObliczMacierzPomyłek(List<int> przewidywane, List<int> rzeczywiste, DataLoader loader)
@@ -140,7 +208,7 @@ namespace SiecNeuronowaMLP
                 int oczek = loader.oczekiwaneWyjsciaTest[i].IndexOf(loader.oczekiwaneWyjsciaTest[i].Max());
 
                 Console.WriteLine($"Wejście: [{string.Join(", ", loader.daneWejscioweTest[i])}] -> Przewidywana: {loader.zmienNaIndex(przew)}," +
-                    $" Oczekiwana: {loader.zmienNaIndex(oczek)}");
+                                  $" Oczekiwana: {loader.zmienNaIndex(oczek)}");
 
                 przewidywane.Add(przew);
                 rzeczywiste.Add(oczek);
@@ -166,6 +234,5 @@ namespace SiecNeuronowaMLP
             dane = noweDane;
             etykiety = noweEtykiety;
         }
-
     }
 }
