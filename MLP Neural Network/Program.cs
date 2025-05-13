@@ -104,7 +104,7 @@ namespace SiecNeuronowaMLP
         {
             int[] architekturaAutoenkoder = { 4, 2, 4 };
             double lrAuto = 0.6, momentumAuto = 0.0;
-            int epokiAuto = 1000;
+            int epokiAuto = 10000;
             var daneAuto = new List<List<double>> {
                 new() { 1, 0, 0, 0 }, new() { 0, 1, 0, 0 },
                 new() { 0, 0, 1, 0 }, new() { 0, 0, 0, 1 }
@@ -207,6 +207,19 @@ namespace SiecNeuronowaMLP
                 int iloscWKlasie = rzeczywiste.Count(r => r == i);
                 double procentKlasy = iloscWKlasie == 0 ? 0 : (double)tp / iloscWKlasie;
                 Console.WriteLine($"Klasa {loader.zmienNaIndex(i)}: {procentKlasy:P2}");
+
+                int fp = Enumerable.Range(0, liczbaKlas).Where(j => j != i).Sum(j => matrix[j, i]);
+                int fn = Enumerable.Range(0, liczbaKlas).Where(j => j != i).Sum(j => matrix[i, j]);
+
+                double precision = tp + fp == 0 ? 0 : (double)tp / (tp + fp);
+                double recall = tp + fn == 0 ? 0 : (double)tp / (tp + fn);
+                double f = precision + recall == 0 ? 0 : 2 * precision * recall / (precision + recall);
+
+                Console.WriteLine($"Klasa {loader.zmienNaIndex(i)}:");
+                Console.WriteLine($"Precision: {precision:F2}");
+                Console.WriteLine($"Recall: {recall:F2}");
+                Console.WriteLine($"F-measure: {f:F2}\n");
+
             }
             Console.WriteLine("-------------------------------------");
         }
